@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>세계 시계 · World Clock</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:#000;color:#eee;font-family:system-ui,-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 12px;letter-spacing:.08em;font-weight:600}
+.ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-bottom:12px}
+.ctl label{font-size:12px;color:#aaa;display:flex;flex-direction:column;gap:4px}
+input,select,button{background:#111;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 9px;font:inherit;color-scheme:dark}
+button{cursor:pointer}button:hover{border-color:#999}
+#msg{font-size:12px;color:#9c9;width:100%;min-height:14px}#msg.err{color:#ff6b6b}
+.gridw{overflow-x:auto}
+.grid{display:grid;grid-template-columns:minmax(400px,1.5fr) minmax(300px,1.2fr) minmax(200px,.9fr)}
+.hd{padding:8px 12px;color:#888;font-size:12px;border-bottom:1px solid #333}
+.r{display:contents}
+.r>div{padding:10px 12px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;gap:14px}
+.r.base>div{background:#0b0b16}
+.c1{flex-wrap:wrap;gap:4px 12px!important}
+.cn{min-width:130px}
+.cn small{color:#888;margin-left:4px}
+.tz{font-size:12px;color:#bbb;display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap}
+.per{color:#ff9f0a;font-size:11px}.per.i{color:#777}
+.dst{font-size:10px;border:1px solid;padding:0 6px;border-radius:8px}
+.dst.a{color:#ff9f0a}.dst.i{color:#666}
+.led{display:flex;align-items:center;gap:4px;height:38px;filter:drop-shadow(0 0 5px rgba(255,255,255,.55))}
+.led.dim{filter:drop-shadow(0 0 3px rgba(200,200,200,.3))}.led.dim .on{fill:#b4b4b4}.led.dim .off{fill:#171717}
+.dg{height:100%;aspect-ratio:.6}.cl{height:100%;aspect-ratio:.2}
+.on{fill:#fff}.off{fill:#1b1b1b}
+.side{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.bd{font-size:12px;font-weight:700;border:1px solid;border-radius:5px;padding:1px 7px}
+.side small{color:#888;font-size:11px}
+.note{color:#777;font-size:11px;margin-top:12px;line-height:1.6}
+@media(max-width:820px){
+.wrap{padding:10px}
+.grid{grid-template-columns:1fr 1fr}
+.hd:first-child{display:none}.hd{padding:6px 8px;font-size:11px}
+.r>div{padding:8px;gap:4px}
+.r>div.c1{grid-column:1/-1;padding-bottom:0;border-bottom:0}
+.r>div:nth-child(2),.r>div:nth-child(3){flex-direction:column;align-items:flex-start;gap:4px}
+.led{height:clamp(20px,6.4vw,30px);gap:2px}
+.side{flex-direction:row;align-items:center;gap:6px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>WORLD CLOCK · 세계 시계</h1>
+<div class="ctl">
+  <label>기준 도시<select id="base"></select></label>
+  <label>변환할 시각 (기준 도시 현지 시각)<input type="datetime-local" step="60" id="dt"></label>
+  <button id="now">현재 시각으로</button>
+  <label style="margin-left:auto">사용자 도시 (한글/영문)
+    <span style="display:flex;gap:6px"><input id="cin" list="cl" placeholder="예: 시드니, Cairo, Asia/Tokyo" autocomplete="off"><button id="cset">적용</button></span>
+  </label>
+  <div id="msg"></div>
+</div>
+<datalist id="cl"></datalist>
+<div class="gridw"><div class="grid" id="g"></div></div>
+<div class="note">· 정렬: 서울 우선, 이후 현재 UTC 오프셋 내림차순 (DST 적용 시 자동 반영) · DST 표시: 서머타임 시행 지역만 UTC 옆에 표시 (주황 = 현재 적용중)<br>
+· 휴일: 주말(토·일) + 주요 고정 공휴일 기준의 근사치입니다. 음력·변동 공휴일은 코드 상단 HOL 객체에서 추가/수정할 수 있습니다.</div>
+</div>
+<script>
+const RAW=`서울|Seoul|Asia/Seoul|KR
+베이징|Beijing|Asia/Shanghai|CN
+하노이|Hanoi|Asia/Ho_Chi_Minh|VN
+뉴델리|New Delhi|Asia/Kolkata|IN
+두바이|Dubai|Asia/Dubai|AE
+바르샤바|Warsaw|Europe/Warsaw|PL
+모스크바|Moscow|Europe/Moscow|RU
+프랑크푸르트|Frankfurt|Europe/Berlin|DE
+런던|London|Europe/London|GB
+상파울루|Sao Paulo|America/Sao_Paulo|BR
+뉴욕|New York|America/New_York|US
+오스틴|Austin|America/Chicago|US
+산호세|San Jose|America/Los_Angeles|US
+호놀룰루|Honolulu|Pacific/Honolulu|US
+도쿄|Tokyo|Asia/Tokyo|JP
+오사카|Osaka|Asia/Tokyo|JP
+시드니|Sydney|Australia/Sydney|AU
+멜버른|Melbourne|Australia/Melbourne|AU
+싱가포르|Singapore|Asia/Singapore|SG
+홍콩|Hong Kong|Asia/Hong_Kong|HK
+타이베이|Taipei|Asia/Taipei|TW
+상하이|Shanghai|Asia/Shanghai|CN
+부산|Busan|Asia/Seoul|KR
+호치민|Ho Chi Minh|Asia/Ho_Chi_Minh|VN
+방콕|Bangkok|Asia/Bangkok|TH
+자카르타|Jakarta|Asia/Jakarta|ID
+마닐라|Manila|Asia/Manila|PH
+쿠알라룸푸르|Kuala Lumpur|Asia/Kuala_Lumpur|MY
+양곤|Yangon|Asia/Yangon|MM
+뭄바이|Mumbai|Asia/Kolkata|IN
+다카|Dhaka|Asia/Dhaka|BD
+카트만두|Kathmandu|Asia/Kathmandu|NP
+콜롬보|Colombo|Asia/Colombo|LK
+카라치|Karachi|Asia/Karachi|PK
+타슈켄트|Tashkent|Asia/Tashkent|UZ
+알마티|Almaty|Asia/Almaty|KZ
+울란바토르|Ulaanbaatar|Asia/Ulaanbaatar|MN
+테헤란|Tehran|Asia/Tehran|IR
+이스탄불|Istanbul|Europe/Istanbul|TR
+리야드|Riyadh|Asia/Riyadh|SA
+도하|Doha|Asia/Qatar|QA
+텔아비브|Tel Aviv|Asia/Jerusalem|IL
+카이로|Cairo|Africa/Cairo|EG
+나이로비|Nairobi|Africa/Nairobi|KE
+라고스|Lagos|Africa/Lagos|NG
+요하네스버그|Johannesburg|Africa/Johannesburg|ZA
+카사블랑카|Casablanca|Africa/Casablanca|MA
+파리|Paris|Europe/Paris|FR
+베를린|Berlin|Europe/Berlin|DE
+마드리드|Madrid|Europe/Madrid|ES
+로마|Rome|Europe/Rome|IT
+암스테르담|Amsterdam|Europe/Amsterdam|NL
+취리히|Zurich|Europe/Zurich|CH
+빈|Vienna|Europe/Vienna|AT
+프라하|Prague|Europe/Prague|CZ
+스톡홀름|Stockholm|Europe/Stockholm|SE
+헬싱키|Helsinki|Europe/Helsinki|FI
+아테네|Athens|Europe/Athens|GR
+키이우|Kyiv|Europe/Kyiv|UA
+리스본|Lisbon|Europe/Lisbon|PT
+더블린|Dublin|Europe/Dublin|IE
+레이캬비크|Reykjavik|Atlantic/Reykjavik|IS
+로스앤젤레스|Los Angeles|America/Los_Angeles|US
+샌프란시스코|San Francisco|America/Los_Angeles|US
+시애틀|Seattle|America/Los_Angeles|US
+시카고|Chicago|America/Chicago|US
+휴스턴|Houston|America/Chicago|US
+댈러스|Dallas|America/Chicago|US
+덴버|Denver|America/Denver|US
+피닉스|Phoenix|America/Phoenix|US
+워싱턴|Washington|America/New_York|US
+보스턴|Boston|America/New_York|US
+마이애미|Miami|America/New_York|US
+애틀랜타|Atlanta|America/New_York|US
+앵커리지|Anchorage|America/Anchorage|US
+괌|Guam|Pacific/Guam|US
+토론토|Toronto|America/Toronto|CA
+밴쿠버|Vancouver|America/Vancouver|CA
+멕시코시티|Mexico City|America/Mexico_City|MX
+보고타|Bogota|America/Bogota|CO
+리마|Lima|America/Lima|PE
+산티아고|Santiago|America/Santiago|CL
+부에노스아이레스|Buenos Aires|America/Argentina/Buenos_Aires|AR
+오클랜드|Auckland|Pacific/Auckland|NZ`;
+const DB=RAW.split('\n').map(l=>{const [ko,en,tz,cc]=l.split('|');return{ko,en,tz,cc}});
+const BASE=DB.slice(0,14);
+
+// 휴일: 주말 + 고정 공휴일 (MM-DD) / 특정일 (YYYY-MM-DD). 필요 시 수정하세요.
+const HOL={
+ KR:['01-01','03-01','05-05','06-06','08-15','10-03','10-09','12-25','2026-02-16','2026-02-17','2026-02-18','2026-09-24','2026-09-25','2026-09-26'],
+ CN:['01-01','05-01','10-01','10-02','10-03','10-04','10-05','10-06','10-07'],
+ VN:['01-01','04-30','05-01','09-02'],
+ IN:['01-26','08-15','10-02','12-25'],
+ AE:['01-01','12-02','12-03'],
+ PL:['01-01','05-01','05-03','08-15','11-01','11-11','12-25','12-26'],
+ RU:['01-01','01-02','01-03','01-04','01-05','01-06','01-07','01-08','02-23','03-08','05-01','05-09','06-12','11-04'],
+ DE:['01-01','05-01','10-03','12-25','12-26'],
+ GB:['01-01','12-25','12-26'],
+ BR:['01-01','04-21','05-01','09-07','10-12','11-02','11-15','12-25'],
+ US:['01-01','07-04','11-11','12-25'],
+ EG:['01-01','04-25','05-01','07-23','10-06']
+};
+const WK={Sun:'일',Mon:'월',Tue:'화',Wed:'수',Thu:'목',Fri:'금',Sat:'토'};
+
+// ---------- 시간 유틸 ----------
+const fc={};
+const fmt=tz=>fc[tz]||(fc[tz]=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',weekday:'short'}));
+function parts(tz,ms){const o={};for(const p of fmt(tz).formatToParts(ms))o[p.type]=p.value;o.hour=String(+o.hour%24).padStart(2,'0');return o}
+function off(tz,ms){const p=parts(tz,ms);return Date.UTC(+p.year,p.month-1,+p.day,+p.hour,+p.minute,+p.second)-Math.floor(ms/1000)*1000}
+function wallToMs(tz,y,mo,d,h,mi,s){const g=Date.UTC(y,mo-1,d,h,mi,s);const o1=off(tz,g);let r=g-o1;const o2=off(tz,r);if(o2!==o1)r=g-o2;return r}
+function fmtOff(o){const s=o<0?'-':'+',a=Math.abs(o),h=Math.floor(a/3600000),m=(a%3600000)/60000;return 'UTC'+s+h+(m?':'+String(m).padStart(2,'0'):'')}
+function dstInfo(tz,now){const y=new Date(now).getUTCFullYear();const a=off(tz,Date.UTC(y,0,1)),b=off(tz,Date.UTC(y,6,1));if(a===b)return null;return off(tz,now)===Math.max(a,b)}
+
+const pc={};
+function dstPeriod(tz,now){
+  const y=new Date(now).getUTCFullYear(),k=tz+y;if(pc[k])return pc[k];
+  const st=5*864e5,t0=Date.UTC(y,0,1),t1=Date.UTC(y+2,0,1),tr=[];
+  let a=t0,oa=off(tz,a);
+  for(let t=t0+st;t<t1;t+=st){const ot=off(tz,t);
+    if(ot!==oa){let lo=a,hi=t;while(hi-lo>60000){const m=Math.floor((lo+hi)/2);off(tz,m)===oa?lo=m:hi=m}
+      tr.push({ms:hi,up:ot>oa});}
+    a=t;oa=ot}
+  const s=tr.find(x=>x.up&&new Date(x.ms).getUTCFullYear()===y&&(off(tz,x.ms)!==undefined));
+  const f=q=>{const p=parts(tz,q.ms);return `${p.year}.${p.month}.${p.day}`};
+  let r='';
+  if(s){const e=tr.find(x=>!x.up&&x.ms>s.ms);r=f(s)+' ~ '+(e?f(e):'')}
+  return pc[k]=r}
+
+// ---------- LED 숫자 ----------
+const PG={a:'10,8 15,3 45,3 50,8 45,13 15,13',b:'54,11 59,16 59,42 54,47 49,42 49,16',c:'54,53 59,58 59,84 54,89 49,84 49,58',d:'10,92 15,87 45,87 50,92 45,97 15,97',e:'6,53 11,58 11,84 6,89 1,84 1,58',f:'6,11 11,16 11,42 6,47 1,42 1,16',g:'10,50 15,45 45,45 50,50 45,55 15,55'};
+const SG=['abcdef','bc','abdeg','abcdg','bcfg','acdfg','acdefg','abc','abcdefg','abcdfg'];
+const DIG=SG.map(s=>'<svg class="dg" viewBox="0 0 60 100">'+Object.keys(PG).map(k=>`<polygon class="${s.includes(k)?'on':'off'}" points="${PG[k]}"/>`).join('')+'</svg>');
+const COL='<svg class="cl" viewBox="0 0 20 100"><circle class="on" cx="10" cy="32" r="5"/><circle class="on" cx="10" cy="68" r="5"/></svg>';
+const led=(t,cls='')=>`<div class="led ${cls}">`+[...t].map(c=>c===':'?COL:DIG[+c]).join('')+'</div>';
+
+// ---------- 상태 ----------
+const $=id=>document.getElementById(id);
+let custom=null,baseKey='Seoul',convMs=Date.now();
+try{const j=localStorage.getItem('wc_custom');if(j)custom=JSON.parse(j)}catch(e){}
+if(!custom||!custom.tz)custom=DB.find(c=>c.en==='Cairo');
+const list=()=>[...BASE,custom];
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[\s._\-]/g,'');
+function find(q){
+  const n=norm(q);if(!n)return null;
+  let c=DB.find(c=>norm(c.ko)===n||norm(c.en)===n)||DB.find(c=>norm(c.ko).startsWith(n)||norm(c.en).startsWith(n))||DB.find(c=>norm(c.ko).includes(n)||norm(c.en).includes(n));
+  if(c)return c;
+  if(q.includes('/')){try{const tz=new Intl.DateTimeFormat('en',{timeZone:q.trim()}).resolvedOptions().timeZone;const nm=tz.split('/').pop().replace(/_/g,' ');return{ko:nm,en:nm,tz,cc:''}}catch(e){}}
+  return null;
+}
+function msg(t,err){const m=$('msg');m.textContent=t;m.className=err?'err':''}
+
+// ---------- 표시 ----------
+function isHol(c,p){
+  if(p.weekday==='Sat'||p.weekday==='Sun')return true;
+  const md=p.month+'-'+p.day,l=HOL[c.cc]||['01-01'];
+  return l.includes(md)||l.includes(p.year+'-'+md);
+}
+function cell(c,ms,dim){
+  const p=parts(c.tz,ms),h=+p.hour;
+  const s=isHol(c,p)?['휴일','#ff3b30']:h<6?['야간','#8e8e93']:h<9?['출근전','#b8860b']:h<18?['근무중','#34c759']:h<22?['퇴근후','#ffd60a']:['야간','#8e8e93'];
+  return (dim?led(`${p.hour}:${p.minute}`,'dim'):led(`${p.hour}:${p.minute}:${p.second}`))+`<div class="side"><span class="bd" style="color:${s[1]};border-color:${s[1]}">${s[0]}</span><small>${p.month}/${p.day} (${WK[p.weekday]})</small></div>`;
+}
+function render(){
+  const now=Date.now();
+  const cs=list().map(c=>({c,o:off(c.tz,now)}));
+  const first=cs.filter(x=>x.c.en==='Seoul');
+  const rest=cs.filter(x=>x.c.en!=='Seoul').sort((a,b)=>b.o-a.o||a.c.en.localeCompare(b.c.en));
+  let h='<div class="hd">도시 / UTC</div><div class="hd">현재 표준시각 (24h)</div><div class="hd">변환 시각 (24h HH:MM)</div>';
+  for(const {c,o} of [...first,...rest]){
+    const d=dstInfo(c.tz,now);
+    const per=d===null?'':`<span class="per${d?'':' i'}">${dstPeriod(c.tz,now)}</span>`;
+    const dst=d===null?'':`<span class="dst ${d?'a':'i'}">DST${d?' 적용중':''}</span>`;
+    h+=`<div class="r${c.en===baseKey?' base':''}"><div class="c1"><div class="cn"><b>${c.ko}</b><small>${c.en}</small></div><div class="tz"><span>${fmtOff(o)}</span>${dst}${per}</div></div><div>${cell(c,now)}</div><div>${cell(c,convMs,true)}</div></div>`;
+  }
+  $('g').innerHTML=h;
+}
+function fillBase(){
+  $('base').innerHTML=list().map(c=>`<option value="${c.en}">${c.ko} (${c.en})</option>`).join('');
+  if(!list().some(c=>c.en===baseKey))baseKey='Seoul';
+  $('base').value=baseKey;
+}
+const baseCity=()=>list().find(c=>c.en===baseKey);
+function setDt(){const p=parts(baseCity().tz,convMs);$('dt').value=`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`}
+
+// ---------- 이벤트 ----------
+$('dt').addEventListener('input',()=>{
+  const m=$('dt').value.match(/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)(?::(\d\d))?$/);
+  if(!m)return;
+  convMs=wallToMs(baseCity().tz,+m[1],+m[2],+m[3],+m[4],+m[5],0);render();
+});
+$('base').addEventListener('change',()=>{baseKey=$('base').value;setDt();render()});
+$('now').addEventListener('click',()=>{convMs=Date.now();setDt();render()});
+function setCustom(){
+  const c=find($('cin').value);
+  if(!c){msg('도시를 찾지 못했습니다. 다른 표기(예: Tokyo, 도쿄) 또는 Asia/Tokyo 형식으로 입력해 보세요.',1);return}
+  if(BASE.some(b=>b.en===c.en)){msg(`${c.ko}은(는) 이미 목록에 있는 도시입니다.`,1);return}
+  custom=c;try{localStorage.setItem('wc_custom',JSON.stringify(c))}catch(e){}
+  fillBase();setDt();render();msg(`${c.ko} (${c.tz}) 적용됨`);$('cin').value='';
+}
+$('cset').addEventListener('click',setCustom);
+$('cin').addEventListener('keydown',e=>{if(e.key==='Enter')setCustom()});
+
+// ---------- 시작 ----------
+$('cl').innerHTML=DB.map(c=>`<option value="${c.ko}"></option><option value="${c.en}"></option>`).join('');
+fillBase();setDt();render();
+let last=Math.floor(Date.now()/1000);
+setInterval(()=>{const s=Math.floor(Date.now()/1000);if(s!==last){last=s;render()}},200);
+</script>
+</body>
+</html>
