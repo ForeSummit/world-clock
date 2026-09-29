@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global World Clock</title>
+    <!-- Google Fonts for LED effect -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Moment.js & Moment-Timezone -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --box-bg: #1a1a1a;
+            --text-main: #ffffff;
+            --led-bright: #ffffff;
+            --led-dim: #a0a0a0;
+            --color-holiday: #ff4d4d;
+            --color-prework: #b8860b;
+            --color-working: #32cd32;
+            --color-postwork: #ffff00;
+            --color-night: #808080;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Malgun Gothic', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { text-align: center; font-family: 'Share Tech Mono', monospace; }
+        
+        /* 사용자 입력 컨트롤 및 범례 */
+        .controls, .legend {
+            max-width: 1000px;
+            margin: 10px auto;
+            background: var(--box-bg);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+        .controls input {
+            padding: 8px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        .controls button {
+            padding: 8px 15px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .controls button:hover { background: #555; }
+        
+        .legend-item { display: flex; align-items: center; font-size: 0.9em; }
+        .legend-color { width: 12px; height: 12px; margin-right: 5px; border-radius: 50%; }
+
+        /* 시계 리스트 */
+        #clock-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .city-card {
+            background: var(--box-bg);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border-left: 5px solid #444;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .row1 {
+            font-size: 0.95em;
+            color: #ccc;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        .row1 strong { font-size: 1.2em; color: white; margin-right: 15px; }
+        .row2, .row3 {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* LED 폰트 효과 및 반응형 폰트 조절 */
+        .led-time {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(1.2rem, 4vw, 2rem);
+            text-shadow: 0 0 5px rgba(255,255,255,0.5);
+            letter-spacing: 2px;
+        }
+        .led-bright { color: var(--led-bright); }
+        .led-dim { color: var(--led-dim); text-shadow: 0 0 3px rgba(160,160,160,0.4); }
+        
+        /* 3열 Input 커스텀 */
+        input[type="time"] {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(1.2rem, 4vw, 1.8rem);
+            background: transparent;
+            color: var(--led-dim);
+            border: none;
+            outline: none;
+            border-bottom: 1px dashed #555;
+            cursor: pointer;
+            text-shadow: 0 0 3px rgba(160,160,160,0.4);
+        }
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 600px) {
+            .city-card { padding: 10px; }
+            .row1 { font-size: 0.85em; }
+            .row2, .row3 { justify-content: space-between; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Global World Clock</h1>
+
+    <div class="controls">
+        <label>추가할 도시명 (한글/영문):</label>
+        <input type="text" id="custom-city-input" placeholder="예: 파리, Paris">
+        <button onclick="addCustomCity()">도시 추가</button>
+        <span id="add-error" style="color:red; font-size: 0.9em;"></span>
+    </div>
+
+    <div class="legend" id="legend"></div>
+
+    <div id="clock-container"></div>
+
+    <script>
+        // 기본 14개 도시 (일본 제외)
+        let cities = [
+            { name: "서울", tz: "Asia/Seoul" },
+            { name: "시드니", tz: "Australia/Sydney" },
+            { name: "베이징", tz: "Asia/Shanghai" },
+            { name: "하노이", tz: "Asia/Ho_Chi_Minh" },
+            { name: "뉴델리", tz: "Asia/Kolkata" },
+            { name: "두바이", tz: "Asia/Dubai" },
+            { name: "바르샤바", tz: "Europe/Warsaw" },
+            { name: "모스크바", tz: "Europe/Moscow" },
+            { name: "프랑크푸르트", tz: "Europe/Berlin" },
+            { name: "런던", tz: "Europe/London" },
+            { name: "상파울루", tz: "America/Sao_Paulo" },
+            { name: "뉴욕", tz: "America/New_York" },
+            { name: "오스틴", tz: "America/Chicago" },
+            { name: "산호세", tz: "America/Los_Angeles" }
+        ];
+
+        // 3열 변환의 기준이 되는 UTC Timestamp (초기값: 페이지 호출 시각)
+        let baseConvertUtcTime = moment().valueOf();
+
+        const statusRules = [
+            { id: 'holiday', name: '휴일', color: 'var(--color-holiday)', bg: '#331111' },
+            { id: 'prework', name: '출근전', color: 'var(--color-prework)', bg: '#332b00' },
+            { id: 'working', name: '근무중', color: 'var(--color-working)', bg: '#0b330b' },
+            { id: 'postwork', name: '퇴근후', color: 'var(--color-postwork)', bg: '#333300' },
+            { id: 'night', name: '야간', color: 'var(--color-night)', bg: '#222222' }
+        ];
+
+        // 범례 렌더링
+        const legendDiv = document.getElementById('legend');
+        statusRules.forEach(rule => {
+            legendDiv.innerHTML += `
+                <div class="legend-item">
+                    <div class="legend-color" style="background:${rule.color}"></div>
+                    ${rule.name}
+                </div>`;
+        });
+
+        // 상태 계산 로직
+        function getStatus(momentObj) {
+            const day = momentObj.day();
+            if (day === 0 || day === 6) return statusRules.find(r => r.id === 'holiday');
+            
+            const hour = momentObj.hour();
+            if (hour >= 6 && hour < 9) return statusRules.find(r => r.id === 'prework');
+            if (hour >= 9 && hour < 18) return statusRules.find(r => r.id === 'working');
+            if (hour >= 18 && hour < 22) return statusRules.find(r => r.id === 'postwork');
+            return statusRules.find(r => r.id === 'night');
+        }
+
+        // 해당년도 DST(일광절약시간제) 기간 계산 함수
+        function getDstInfo(tz) {
+            const zone = moment.tz.zone(tz);
+            const currentYear = moment().year();
+            let dstText = "미적용";
+            
+            if (zone) {
+                const startOfYear = moment.utc([currentYear, 0, 1]).valueOf();
+                const endOfYear = moment.utc([currentYear + 1, 0, 1]).valueOf();
+                
+                let dstStart = null;
+                let dstEnd = null;
+
+                for (let i = 0; i < zone.untils.length; i++) {
+                    const until = zone.untils[i];
+                    if (until > startOfYear && until < endOfYear + 31536000000) {
+                        const isDst = zone.isdsts[i];
+                        if (isDst) dstStart = until;
+                        else if (dstStart && !dstEnd) dstEnd = until;
+                    }
+                }
+                
+                if (dstStart && dstEnd) {
+                    const sm = moment(dstStart).tz(tz).format("M/D");
+                    const em = moment(dstEnd).tz(tz).format("M/D");
+                    dstText = `적용 (${sm} ~ ${em})`;
+                }
+            }
+            return dstText;
+        }
+
+        // 렌더링 함수 (정렬 포함)
+        function renderClocks() {
+            const container = document.getElementById('clock-container');
+            
+            // UTC 기준으로 역순 정렬 (UTC+ 빠른 순 -> 느린 순)
+            cities.sort((a, b) => {
+                const offsetA = moment.tz(a.tz).utcOffset();
+                const offsetB = moment.tz(b.tz).utcOffset();
+                return offsetB - offsetA; 
+            });
+
+            container.innerHTML = '';
+            
+            cities.forEach((city, index) => {
+                const m = moment.tz(city.tz);
+                const offsetStr = `UTC${m.format('Z')}`;
+                const dstInfo = getDstInfo(city.tz);
+                
+                // 3열 변환 시간 초기 계산
+                const convertM = moment(baseConvertUtcTime).tz(city.tz);
+                const convertTimeStr = convertM.format('HH:mm');
+                const convertStatus = getStatus(convertM);
+
+                const card = document.createElement('div');
+                card.className = 'city-card';
+                card.innerHTML = `
+                    <div class="row1">
+                        <strong>${city.name}</strong> 
+                        <span>${offsetStr}</span> | 
+                        <span>DST: ${dstInfo}</span>
+                    </div>
+                    <div class="row2">
+                        <span class="led-time led-bright" id="time-${index}">--:--:--</span>
+                        <span class="status-badge" id="status-${index}">-</span>
+                    </div>
+                    <div class="row3">
+                        <input type="time" class="led-time led-dim" value="${convertTimeStr}" onchange="updateConvertTime(this.value, '${city.tz}')">
+                        <span class="status-badge" style="background:${convertStatus.bg}; color:${convertStatus.color}; border: 1px solid ${convertStatus.color}">
+                            ${convertStatus.name}
+                        </span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            updateCurrentTime();
+        }
+
+        // 2열 현재 시간 업데이트 (1초마다 호출)
+        function updateCurrentTime() {
+            cities.forEach((city, index) => {
+                const m = moment().tz(city.tz);
+                
+                const timeEl = document.getElementById(`time-${index}`);
+                if(timeEl) timeEl.innerText = m.format('HH:mm:ss');
+                
+                const statusEl = document.getElementById(`status-${index}`);
+                if(statusEl) {
+                    const status = getStatus(m);
+                    statusEl.innerText = status.name;
+                    statusEl.style.backgroundColor = status.bg;
+                    statusEl.style.color = status.color;
+                    statusEl.style.border = `1px solid ${status.color}`;
+                }
+            });
+        }
+
+        // 3열에서 특정 도시의 시간을 변경했을 때 글로벌 연산
+        function updateConvertTime(timeStr, tz) {
+            if(!timeStr) return;
+            const [hours, minutes] = timeStr.split(':');
+            
+            // 입력된 시간으로 해당 타임존의 오늘 날짜 기준 시각을 생성하여 UTC로 변환
+            const m = moment().tz(tz).hours(hours).minutes(minutes).seconds(0).milliseconds(0);
+            baseConvertUtcTime = m.valueOf();
+            
+            // 다시 렌더링하여 3열 업데이트
+            renderClocks();
+        }
+
+        // 도시명 매핑 (사용자 입력을 IANA 타임존으로 변환)
+        const cityDictionary = {
+            "파리": "Europe/Paris", "paris": "Europe/Paris",
+            "로마": "Europe/Rome", "rome": "Europe/Rome",
+            "방콕": "Asia/Bangkok", "bangkok": "Asia/Bangkok",
+            "타이베이": "Asia/Taipei", "taipei": "Asia/Taipei",
+            "싱가포르": "Asia/Singapore", "singapore": "Asia/Singapore",
+            "토론토": "America/Toronto", "toronto": "America/Toronto",
+            "밴쿠버": "America/Vancouver", "vancouver": "America/Vancouver",
+            "마드리드": "Europe/Madrid", "madrid": "Europe/Madrid",
+            "이스탄불": "Europe/Istanbul", "istanbul": "Europe/Istanbul",
+            "시카고": "America/Chicago", "chicago": "America/Chicago"
+        };
+
+        // 커스텀 도시 추가
+        function addCustomCity() {
+            const input = document.getElementById('custom-city-input').value.trim();
+            const errSpan = document.getElementById('add-error');
+            errSpan.innerText = "";
+            
+            if (!input) return;
+
+            // 일본 관련 입력 차단
+            if(input.includes("도쿄") || input.toLowerCase().includes("tokyo") || input.includes("일본") || input.toLowerCase().includes("japan") || input.includes("오사카")) {
+                errSpan.innerText = "일본 지역은 추가할 수 없습니다.";
+                return;
+            }
+
+            if (cities.length >= 15) {
+                errSpan.innerText = "최대 15개 도시까지만 추가할 수 있습니다.";
+                return;
+            }
+
+            // 1) 딕셔너리 매핑 시도
+            let tz = cityDictionary[input.toLowerCase()];
+            
+            // 2) moment-timezone의 전체 이름에서 검색 시도 (영문 입력일 경우)
+            if (!tz) {
+                const allZones = moment.tz.names();
+                const matched = allZones.find(z => z.toLowerCase().includes(input.toLowerCase()));
+                if(matched) tz = matched;
+            }
+
+            if (tz) {
+                cities.push({ name: input, tz: tz });
+                document.getElementById('custom-city-input').value = "";
+                renderClocks();
+            } else {
+                errSpan.innerText = "해당 도시의 타임존을 찾을 수 없습니다.";
+            }
+        }
+
+        // 초기화
+        renderClocks();
+        setInterval(updateCurrentTime, 1000);
+
+    </script>
+</body>
+</html>
