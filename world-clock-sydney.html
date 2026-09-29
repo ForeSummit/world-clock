@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>World Clock · 세계 시계</title>
+<meta name="color-scheme" content="dark">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--line:#1f1f22;--dim:#9a9aa0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:#000;color:#e6e6e6;font-family:'Noto Sans KR',system-ui,-apple-system,'Malgun Gothic',sans-serif;min-height:100%}
+.w{max-width:1100px;margin:0 auto;padding:10px 12px 28px}
+h1{font-family:Orbitron,'Noto Sans KR',sans-serif;font-size:clamp(18px,5.4vw,30px);letter-spacing:.08em;margin:6px 0 16px;color:#fff;font-weight:700}
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;padding:16px;border:1px solid #2c2c30;border-radius:18px;background:#0d0d0f;margin-bottom:18px}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f label{font-size:13px;color:var(--dim)}
+.f .row{display:flex;gap:8px;min-width:0}
+input,select,button{background:#0d0d0f;color:#f0f0f0;border:1px solid #3a3a40;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;min-width:0}
+select,input[type=datetime-local]{width:100%}
+.f .row input{flex:1}
+button{cursor:pointer;white-space:nowrap}button:hover{background:#1a1a1d}
+.f.e{justify-content:flex-end}
+#msg{font-size:12px;color:#e0b040;min-height:0}
+.r{display:grid;grid-template-columns:minmax(250px,1.2fr) minmax(0,1.3fr) minmax(0,1fr);gap:6px 16px;align-items:center;padding:12px 8px;border-bottom:1px solid var(--line)}
+.r.h{font-size:13px;color:var(--dim);padding:8px}
+.r.b{background:#0c1024;border-top:1px solid #2a3560;border-bottom:1px solid #2a3560}
+.c b{font-size:20px;color:#fff;margin-right:8px}
+.c small{font-size:15px;color:var(--dim)}
+.m{display:block;font-size:12.5px;color:var(--dim);margin-top:3px}
+.m em{font-style:normal;color:#ff9f43;margin-left:5px}
+.led{display:inline-flex;align-items:center;gap:.04em;font-size:46px;height:1em;color:#fff;filter:drop-shadow(0 0 3px rgba(255,255,255,.55)) drop-shadow(0 0 9px rgba(255,255,255,.2))}
+.led.cv{color:#a6a6ac;filter:drop-shadow(0 0 3px rgba(190,190,190,.3))}
+.d{width:.6em;height:1em;fill:currentColor}.k{width:.28em;height:1em;fill:currentColor}
+.d .off{opacity:.1}
+.sub{display:flex;align-items:center;gap:10px;margin-top:8px;white-space:nowrap}
+.sub span{color:var(--dim);font-size:15px}
+.bd{font-style:normal;font-weight:700;font-size:15px;padding:3px 10px;border-radius:9px;border:2px solid;white-space:nowrap}
+.hol{color:#ff5a5a;border-color:#ff5a5a;background:rgba(255,90,90,.1)}
+.pre{color:#b09014;border-color:#8f7710;background:rgba(176,144,20,.1)}
+.on{color:#33d17a;border-color:#22a860;background:rgba(51,209,122,.1)}
+.post{color:#ffd21f;border-color:#ffd21f;background:rgba(255,210,31,.1)}
+.ngt{color:#9a9a9a;border-color:#666;background:rgba(150,150,150,.08)}
+.lg{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:13px;color:var(--dim);align-items:center}
+.lg .bd{font-size:12px;padding:1px 7px;border-width:1px}
+.note{margin-top:10px;font-size:12px;color:#777;line-height:1.6}
+@media(max-width:700px){
+ .w{padding:8px 8px 24px}
+ .ctl{padding:14px;gap:12px}
+ .r{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 8px;padding:12px 6px}
+ .r.h>div:first-child{display:none}
+ .c{grid-column:1/-1}
+ .c b{font-size:22px}.c small{font-size:17px}
+ .m{display:inline;margin-left:14px;font-size:15px}
+ .led{font-size:9.4vw}
+ .sub{gap:2vw}.sub span{font-size:3.7vw}.bd{font-size:3.7vw;padding:2px 2.2vw}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="df"></defs></svg>
+<div class="w">
+<h1>WORLD CLOCK · 세계 시계</h1>
+<div class="ctl">
+ <div class="f"><label>기준 도시</label><select id="bs"></select></div>
+ <div class="f"><label>변환할 시각 (기준 도시 현지 시각)</label><input type="datetime-local" id="tm"></div>
+ <div class="f e"><button id="nw">현재 시각으로</button></div>
+ <div class="f"><label>사용자 도시 (한글/영문)</label><div class="row"><input id="ci" list="dl" placeholder="예: 싱가포르, Cairo, Asia/Tokyo"><button id="ap">적용</button></div><span id="msg"></span></div>
+</div>
+<datalist id="dl"></datalist>
+<div class="r h"><div>도시 · UTC · DST</div><div>현재 표준시각 (24h)</div><div>변환 시각 (24h HH:MM)</div></div>
+<div id="rows"></div>
+<div class="lg" id="lg"></div>
+<div class="note">· 정렬: 서울·시드니 고정, 이후 현재 UTC 오프셋 내림차순 (DST 적용 시 자동 반영, 사용자 도시 포함)<br>· DST 표시: 서머타임 시행 지역만 UTC 옆에 표시 (주황 = 현재 적용중)<br>· 휴일: 주말(토·일) + 주요 고정 공휴일 기준의 근사치입니다. 음력·변동 공휴일은 코드 상단 HOL 객체에서 추가/수정할 수 있습니다.</div>
+</div>
+<script>
+var D="서울|Seoul|Asia/Seoul|KR,시드니|Sydney|Australia/Sydney|AU,베이징|Beijing|Asia/Shanghai|CN,하노이|Hanoi|Asia/Ho_Chi_Minh|VN,뉴델리|New Delhi|Asia/Kolkata|IN,두바이|Dubai|Asia/Dubai|AE,바르샤바|Warsaw|Europe/Warsaw|PL,모스크바|Moscow|Europe/Moscow|RU,프랑크푸르트|Frankfurt|Europe/Berlin|DE,런던|London|Europe/London|GB,상파울루|Sao Paulo|America/Sao_Paulo|BR,뉴욕|New York|America/New_York|US,오스틴|Austin|America/Chicago|US,산호세|San Jose|America/Los_Angeles|US,"
++"싱가포르|Singapore|Asia/Singapore|SG,방콕|Bangkok|Asia/Bangkok|TH,홍콩|Hong Kong|Asia/Hong_Kong|HK,타이베이|Taipei|Asia/Taipei|TW,자카르타|Jakarta|Asia/Jakarta|ID,마닐라|Manila|Asia/Manila|PH,쿠알라룸푸르|Kuala Lumpur|Asia/Kuala_Lumpur|MY,호치민|Ho Chi Minh|Asia/Ho_Chi_Minh|VN,뭄바이|Mumbai|Asia/Kolkata|IN,다카|Dhaka|Asia/Dhaka|BD,카라치|Karachi|Asia/Karachi|PK,카트만두|Kathmandu|Asia/Kathmandu|NP,멜버른|Melbourne|Australia/Melbourne|AU,오클랜드|Auckland|Pacific/Auckland|NZ,"
++"파리|Paris|Europe/Paris|FR,베를린|Berlin|Europe/Berlin|DE,로마|Rome|Europe/Rome|IT,마드리드|Madrid|Europe/Madrid|ES,암스테르담|Amsterdam|Europe/Amsterdam|NL,취리히|Zurich|Europe/Zurich|CH,프라하|Prague|Europe/Prague|CZ,부다페스트|Budapest|Europe/Budapest|HU,스톡홀름|Stockholm|Europe/Stockholm|SE,헬싱키|Helsinki|Europe/Helsinki|FI,키이우|Kyiv|Europe/Kyiv|UA,더블린|Dublin|Europe/Dublin|IE,리스본|Lisbon|Europe/Lisbon|PT,이스탄불|Istanbul|Europe/Istanbul|TR,"
++"카이로|Cairo|Africa/Cairo|EG,나이로비|Nairobi|Africa/Nairobi|KE,라고스|Lagos|Africa/Lagos|NG,요하네스버그|Johannesburg|Africa/Johannesburg|ZA,리야드|Riyadh|Asia/Riyadh|SA,테헤란|Tehran|Asia/Tehran|IR,"
++"로스앤젤레스|Los Angeles|America/Los_Angeles|US,샌프란시스코|San Francisco|America/Los_Angeles|US,시애틀|Seattle|America/Los_Angeles|US,라스베이거스|Las Vegas|America/Los_Angeles|US,시카고|Chicago|America/Chicago|US,댈러스|Dallas|America/Chicago|US,워싱턴|Washington|America/New_York|US,보스턴|Boston|America/New_York|US,마이애미|Miami|America/New_York|US,호놀룰루|Honolulu|Pacific/Honolulu|US,앵커리지|Anchorage|America/Anchorage|US,토론토|Toronto|America/Toronto|CA,밴쿠버|Vancouver|America/Vancouver|CA,멕시코시티|Mexico City|America/Mexico_City|MX,리마|Lima|America/Lima|PE,부에노스아이레스|Buenos Aires|America/Argentina/Buenos_Aires|AR";
+var ALL=D.split(",").filter(Boolean).map(function(s,i){var a=s.split("|");return{id:"c"+i,ko:a[0],en:a[1],tz:a[2],cc:a[3]}});
+var HOL={KR:"1/1,3/1,5/5,6/6,8/15,10/3,10/9,12/25",AU:"1/1,1/26,4/25,12/25,12/26",CN:"1/1,5/1,10/1",VN:"1/1,4/30,5/1,9/2",IN:"1/26,8/15,10/2",AE:"1/1,12/2",PL:"1/1,5/1,5/3,11/11,12/25,12/26",RU:"1/1,2/23,3/8,5/1,5/9,6/12,11/4",DE:"1/1,5/1,10/3,12/25,12/26",GB:"1/1,12/25,12/26",BR:"1/1,4/21,5/1,9/7,10/12,11/2,11/15,12/25",US:"1/1,7/4,11/11,12/25",FR:"1/1,5/1,7/14,12/25",CA:"1/1,7/1,12/25",SG:"1/1,8/9,12/25"};
+
+var FIX=ALL.slice(0,14),custom=ALL.filter(function(c){return c.ko==="싱가포르"})[0];
+try{var sv=localStorage.getItem("wc_custom");if(sv){var f0=JSON.parse(sv);if(f0&&f0.tz){custom=f0}}}catch(e){}
+var cities=[],baseId="c0",conv=Date.now(),cache={},dc={};
+function dtf(tz){return cache[tz]||(cache[tz]=new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric",weekday:"short"}))}
+function parts(tz,t){var o={};dtf(tz).formatToParts(t).forEach(function(p){o[p.type]=p.value});return{y:+o.year,mo:+o.month,d:+o.day,h:+o.hour%24,mi:+o.minute,s:+o.second,wd:o.weekday}}
+function off(tz,t){var p=parts(tz,t);return Math.round((Date.UTC(p.y,p.mo-1,p.d,p.h,p.mi,p.s)-Math.floor(t/1000)*1000)/60000)}
+function toInst(tz,y,mo,d,h,mi){var g=Date.UTC(y,mo-1,d,h,mi),t=g-off(tz,g)*6e4;return g-off(tz,t)*6e4}
+function p2(n){return(n<10?"0":"")+n}
+function utcLbl(m){var s=m<0?"-":"+",a=Math.abs(m),h=Math.floor(a/60),mm=a%60;return"UTC"+s+h+(mm?":"+p2(mm):"")}
+function dstInfo(tz,yr){var k=tz+yr;if(dc[k])return dc[k];
+ var t0=Date.UTC(yr,0,1),prev=off(tz,t0),ev=[],o1=prev,o7=off(tz,Date.UTC(yr,6,1));
+ for(var d=1;d<=366;d++){var t=t0+d*864e5;if(new Date(t).getUTCFullYear()!==yr)break;var o=off(tz,t);
+  if(o!==prev){var lo=t-864e5,hi=t;while(hi-lo>6e4){var mid=Math.floor((lo+hi)/2);if(off(tz,mid)===prev)lo=mid;else hi=mid}
+   var p=parts(tz,hi);ev.push({up:o>prev,y:p.y,m:p.mo,d:p.d});prev=o}}
+ var r={has:ev.length>0,std:Math.min(o1,o7),s:null,e:null};
+ ev.forEach(function(e){if(e.up)r.s=e;else r.e=e});
+ var fm=function(e,y){return y+"."+p2(e.m)+"."+p2(e.d)};
+ if(r.has){var st=r.s,en=r.e;
+  if(st&&en){var endY=(en.m*100+en.d)>(st.m*100+st.d)?yr:yr+1;r.txt=fm(st,yr)+" ~ "+fm(en,endY)}
+  else r.txt=st?fm(st,yr)+" ~":"~ "+fm(en,yr)}
+ return dc[k]=r}
+
+var SEG={a:"2.2,1 9.8,1 8.6,2.8 3.4,2.8",b:"11,2.2 9.4,3.6 9.4,8.6 11,9.8",c:"11,10.2 9.4,11.4 9.4,16.4 11,17.8",d:"2.2,19 3.4,17.2 8.6,17.2 9.8,19",e:"1,10.2 2.6,11.4 2.6,16.4 1,17.8",f:"1,2.2 2.6,3.6 2.6,8.6 1,9.8",g:"2.2,10 3.4,8.2 8.6,8.2 9.8,10 8.6,11.8 3.4,11.8"};
+var DG=["abcdef","bc","abged","abgcd","fgbc","afgcd","afgedc","abc","abcdefg","abcdfg"];
+document.getElementById("df").innerHTML=DG.map(function(s,i){return'<g id="g'+i+'">'+s.split("").map(function(k){return'<polygon points="'+SEG[k]+'"/>'}).join("")+"</g>"}).join("");
+var CL='<svg class="k" viewBox="0 0 4 20"><circle cx="2" cy="6.5" r="1.2"/><circle cx="2" cy="13.5" r="1.2"/></svg>';
+function dg(n){return'<svg class="d" viewBox="0 0 12 20"><use href="#g8" class="off"/><use href="#g'+n+'" class="on"/></svg>'}
+function led(a){return a.map(function(v){return dg(Math.floor(v/10))+dg(v%10)}).join(CL)}
+var KW={Sun:"일",Mon:"월",Tue:"화",Wed:"수",Thu:"목",Fri:"금",Sat:"토"},last="";
+function status(c,p){var hs=(HOL[c.cc]||"").split(",");
+ if(p.wd==="Sat"||p.wd==="Sun"||hs.indexOf(p.mo+"/"+p.d)>-1)return["휴일","hol"];
+ var h=p.h;if(h>=6&&h<9)return["출근전","pre"];if(h>=9&&h<18)return["근무중","on"];if(h>=18&&h<22)return["퇴근후","post"];return["야간","ngt"]}
+function base(){return cities.filter(function(c){return c.id===baseId})[0]}
+function dts(p){return p.y+"-"+p2(p.mo)+"-"+p2(p.d)+"T"+p2(p.h)+":"+p2(p.mi)}
+function syncTm(){document.getElementById("tm").value=dts(parts(base().tz,conv))}
+function build(){cities=FIX.concat([{id:"c99",ko:custom.ko,en:custom.en,tz:custom.tz,cc:custom.cc||""}]);
+ var sel=document.getElementById("bs");
+ sel.innerHTML=cities.map(function(c){return'<option value="'+c.id+'">'+c.ko+" ("+c.en+")</option>"}).join("");
+ if(!cities.some(function(c){return c.id===baseId}))baseId="c0";sel.value=baseId;syncTm();last=""}
+function col(c,p,t,cv){var s=status(c,p);
+ return'<div><div class="led'+(cv?" cv":"")+'">'+led(t)+'</div><div class="sub"><i class="bd '+s[1]+'">'+s[0]+"</i><span>"+p2(p.mo)+"/"+p2(p.d)+" ("+KW[p.wd]+")</span></div></div>"}
+function render(){var now=Date.now(),yr=new Date(now).getUTCFullYear();
+ var arr=cities.map(function(c){return{c:c,o:off(c.tz,now)}});
+ var top=arr.filter(function(x){return x.c.id==="c0"}).concat(arr.filter(function(x){return x.c.id==="c1"}));
+ var rest=arr.filter(function(x){return x.c.id!=="c0"&&x.c.id!=="c1"}).sort(function(a,b){return b.o-a.o});
+ var h="";
+ top.concat(rest).forEach(function(x){var c=x.c,p=parts(c.tz,now),q=parts(c.tz,conv),di=dstInfo(c.tz,yr);
+  var meta=utcLbl(x.o)+" · "+(di.has?"DST 대상 · "+di.txt+(x.o>di.std?"<em>적용중</em>":""):"DST 없음");
+  h+='<div class="r'+(c.id===baseId?" b":"")+'"><div class="c"><b>'+c.ko+"</b><small>"+c.en+'</small><span class="m">'+meta+"</span></div>"
+  +col(c,p,[p.h,p.mi,p.s],0)+col(c,q,[q.h,q.mi],1)+"</div>"});
+ if(h!==last){document.getElementById("rows").innerHTML=h;last=h}}
+document.getElementById("dl").innerHTML=ALL.slice(14).map(function(c){return'<option value="'+c.ko+'">'+c.en+"</option>"}).join("");
+document.getElementById("lg").innerHTML='<b style="color:#bbb">범례</b><span><i class="bd hol">휴일</i> 주말·공휴일</span><span><i class="bd pre">출근전</i> 06~09시</span><span><i class="bd on">근무중</i> 09~18시</span><span><i class="bd post">퇴근후</i> 18~22시</span><span><i class="bd ngt">야간</i> 22~06시</span>';
+function norm(s){return s.toLowerCase().replace(/[\s\-_.]/g,"")}
+function apply(){var v=document.getElementById("ci").value.trim(),msg=document.getElementById("msg");if(!v)return;var n=norm(v),f=null;
+ ALL.forEach(function(c){if(!f&&(norm(c.ko)===n||norm(c.en)===n))f=c});
+ if(!f)ALL.forEach(function(c){if(!f&&n.length>1&&(norm(c.ko).indexOf(n)===0||norm(c.en).indexOf(n)===0))f=c});
+ if(!f&&v.indexOf("/")>0){try{new Intl.DateTimeFormat("en",{timeZone:v});var nm=v.split("/").pop().replace(/_/g," ");f={ko:nm,en:nm,tz:v,cc:""}}catch(e){}}
+ if(!f){msg.textContent="도시를 찾지 못했습니다. 목록에서 선택하거나 Asia/Bangkok 형식으로 입력하세요.";return}
+ if(FIX.some(function(c){return c.tz===f.tz&&c.ko===f.ko})){msg.textContent="이미 표시 중인 도시입니다.";return}
+ custom={ko:f.ko,en:f.en,tz:f.tz,cc:f.cc};try{localStorage.setItem("wc_custom",JSON.stringify(custom))}catch(e){}
+ msg.textContent="";document.getElementById("ci").value="";build();render()}
+
+function setConv(){var v=document.getElementById("tm").value;if(!v)return;var m=v.match(/(\d+)-(\d+)-(\d+)T(\d+):(\d+)/);if(!m)return;conv=toInst(base().tz,+m[1],+m[2],+m[3],+m[4],+m[5]);last="";render()}
+document.getElementById("ap").onclick=apply;
+document.getElementById("ci").onkeydown=function(e){if(e.key==="Enter")apply()};
+document.getElementById("tm").onchange=setConv;
+document.getElementById("bs").onchange=function(){baseId=this.value;syncTm();last="";render()};
+document.getElementById("nw").onclick=function(){conv=Date.now();syncTm();last="";render()};
+build();render();setInterval(render,500);
+</script>
+</body>
+</html>
